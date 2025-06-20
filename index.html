@@ -83,10 +83,11 @@
 
     async function lookupProduct(upc) {
       try {
-        const res = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${upc}`, {
+        const url = `https://api.upcitemdb.com/prod/trial/lookup?upc=${upc}`;
+        const res = await fetch(url, {
           headers: { 'Content-Type': 'application/json' }
         });
-        alert(res.url);
+        alert(url);
         const data = await res.json();
         if (data.items && data.items.length > 0) {
           const item = data.items[0];
