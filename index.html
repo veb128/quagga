@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Barcode Detector with Camera Selector</title>
+  <title>Barcode Detector with Camera Selection</title>
   <style>
     #video {
       width: 100%;
@@ -25,13 +25,14 @@
   <h1 style="text-align: center;">Barcode Detector with Camera Selection</h1>
 
   <select id="cameraSelect"></select>
-  <video id="video" autoplay></video>
+  <video id="video" autoplay playsinline></video>
   <div id="output">Initializing...</div>
 
   <script>
     const video = document.getElementById('video');
     const cameraSelect = document.getElementById('cameraSelect');
     const output = document.getElementById('output');
+    let currentStream = null;
 
     async function getCameras() {
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -45,48 +46,55 @@
     }
 
     async function startStream(deviceId) {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
       const constraints = {
-        video: { deviceId: { exact: deviceId } }
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      video.srcObject = stream;
-      return stream;
-    }
-
-    function stopStream() {
-      const stream = video.srcObject;
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    }
-
-    async function scanLoop(detector) {
-      try {
-        const barcodes = await detector.detect(video);
-        if (barcodes.length > 0) {
-          output.textContent = `Scanned: ${barcodes[0].rawValue}`;
-          stopStream();
-        } else {
-          requestAnimationFrame(() => scanLoop(detector));
+        video: {
+          deviceId: { exact: deviceId }
         }
-      } catch (err) {
-        output.textContent = `Scan error: ${err.message}`;
-      }
+      };
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = currentStream;
+
+      return new Promise(resolve => {
+        video.addEventListener('loadeddata', () => resolve(), { once: true });
+      });
+    }
+
+    function scanLoop(detector) {
+      const doScan = async () => {
+        if (video.readyState < 2) {
+          requestAnimationFrame(doScan);
+          return;
+        }
+        try {
+          const barcodes = await detector.detect(video);
+          if (barcodes.length > 0) {
+            output.textContent = `Scanned: ${barcodes[0].rawValue}`;
+            if (currentStream) currentStream.getTracks().forEach(track => track.stop());
+          } else {
+            requestAnimationFrame(doScan);
+          }
+        } catch (err) {
+          output.textContent = `Scan error: ${err.message}`;
+        }
+      };
+      requestAnimationFrame(doScan);
     }
 
     async function setupScanner(deviceId) {
-      stopStream();
-      output.textContent = "Scanning...";
-      const stream = await startStream(deviceId);
+      output.textContent = "Starting camera...";
       const detector = new BarcodeDetector({ formats: ['upc_a', 'upc_e'] });
-      requestAnimationFrame(() => scanLoop(detector));
+      await startStream(deviceId);
+      output.textContent = "Scanning...";
+      scanLoop(detector);
     }
 
     cameraSelect.addEventListener('change', () => {
       setupScanner(cameraSelect.value);
     });
 
-    // Initialize
     (async () => {
       if (!('BarcodeDetector' in window)) {
         output.textContent = "Barcode Detection API not supported in this browser.";
@@ -94,7 +102,7 @@
       }
       await getCameras();
       if (cameraSelect.options.length > 0) {
-        await setupScanner(cameraSelect.value);
+        setupScanner(cameraSelect.value);
       } else {
         output.textContent = "No camera devices found.";
       }
