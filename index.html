@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Barcode Detector with Camera Selection</title>
+  <title>Barcode Product Lookup</title>
   <style>
     #video {
       width: 100%;
@@ -22,8 +22,7 @@
   </style>
 </head>
 <body>
-  <h1 style="text-align: center;">Barcode Detector with Camera Selection</h1>
-
+  <h1 style="text-align: center;">UPC Scanner with Product Lookup</h1>
   <select id="cameraSelect"></select>
   <video id="video" autoplay playsinline></video>
   <div id="output">Initializing...</div>
@@ -33,6 +32,8 @@
     const cameraSelect = document.getElementById('cameraSelect');
     const output = document.getElementById('output');
     let currentStream = null;
+
+    const API_KEY = 'YOUR_API_KEY_HERE'; // 🔑 Replace this with your UPCitemdb key
 
     async function getCameras() {
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -49,14 +50,9 @@
       if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
       }
-      const constraints = {
-        video: {
-          deviceId: { exact: deviceId }
-        }
-      };
+      const constraints = { video: { deviceId: { exact: deviceId } } };
       currentStream = await navigator.mediaDevices.getUserMedia(constraints);
       video.srcObject = currentStream;
-
       return new Promise(resolve => {
         video.addEventListener('loadeddata', () => resolve(), { once: true });
       });
@@ -71,8 +67,10 @@
         try {
           const barcodes = await detector.detect(video);
           if (barcodes.length > 0) {
-            output.textContent = `Scanned: ${barcodes[0].rawValue}`;
+            const code = barcodes[0].rawValue;
+            output.textContent = `UPC: ${code} — Looking up...`;
             if (currentStream) currentStream.getTracks().forEach(track => track.stop());
+            lookupProduct(code);
           } else {
             requestAnimationFrame(doScan);
           }
@@ -81,6 +79,29 @@
         }
       };
       requestAnimationFrame(doScan);
+    }
+
+    async function lookupProduct(upc) {
+      try {
+        const res = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${upc}`, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          const item = data.items[0];
+          output.innerHTML = `
+            <strong>${item.title}</strong><br/>
+            Brand: ${item.brand}<br/>
+            Category: ${item.category}<br/>
+            ${item.description || ''}<br/>
+            ${item.images && item.images[0] ? `<img src="${item.images[0]}" width="200">` : ''}
+          `;
+        } else {
+          output.textContent = `No product found for UPC ${upc}`;
+        }
+      } catch (err) {
+        output.textContent = `Lookup error: ${err.message}`;
+      }
     }
 
     async function setupScanner(deviceId) {
