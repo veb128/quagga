@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Barcode Product Lookup</title>
+  <title>Food Scanner with Open Food Facts</title>
   <style>
     #video {
       width: 100%;
@@ -17,23 +17,28 @@
     #output {
       margin-top: 20px;
       text-align: center;
-      font-size: 1.2em;
+      font-size: 1.1em;
+    }
+    #productInfo img {
+      max-width: 200px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h1 style="text-align: center;">UPC Scanner with Product Lookup</h1>
+  <h1 style="text-align: center;">Food Scanner with Camera Selection</h1>
+
   <select id="cameraSelect"></select>
   <video id="video" autoplay playsinline></video>
   <div id="output">Initializing...</div>
+  <div id="productInfo"></div>
 
   <script>
     const video = document.getElementById('video');
     const cameraSelect = document.getElementById('cameraSelect');
     const output = document.getElementById('output');
+    const productInfo = document.getElementById('productInfo');
     let currentStream = null;
-
-    const API_KEY = 'YOUR_API_KEY_HERE'; // 🔑 Replace this with your UPCitemdb key
 
     async function getCameras() {
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -83,19 +88,20 @@
 
     async function lookupProduct(upc) {
       try {
-        fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`)
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`);
         const data = await res.json();
-        if (data.items && data.items.length > 0) {
-          const item = data.items[0];
-          output.innerHTML = `
-            <strong>${item.title}</strong><br/>
-            Brand: ${item.brand}<br/>
-            Category: ${item.category}<br/>
-            ${item.description || ''}<br/>
-            ${item.images && item.images[0] ? `<img src="${item.images[0]}" width="200">` : ''}
+        if (data.status === 1) {
+          const p = data.product;
+          output.textContent = `Product: ${p.product_name || 'Unnamed Product'}`;
+          productInfo.innerHTML = `
+            Brand: ${p.brands || 'N/A'}<br/>
+            Categories: ${p.categories || 'N/A'}<br/>
+            Quantity: ${p.quantity || 'N/A'}<br/>
+            ${p.image_url ? `<img src="${p.image_url}">` : ''}
           `;
         } else {
-          output.textContent = `No product found for UPC ${upc}`;
+          output.textContent = `Product not found for UPC ${upc}`;
+          productInfo.innerHTML = '';
         }
       } catch (err) {
         output.textContent = `Lookup error: ${err.message}`;
@@ -104,7 +110,8 @@
 
     async function setupScanner(deviceId) {
       output.textContent = "Starting camera...";
-      const detector = new BarcodeDetector({ formats: ['upc_a', 'upc_e'] });
+      productInfo.innerHTML = '';
+      const detector = new BarcodeDetector({ formats: ['upc_a', 'upc_e', 'ean_13'] });
       await startStream(deviceId);
       output.textContent = "Scanning...";
       scanLoop(detector);
@@ -123,7 +130,7 @@
       if (cameraSelect.options.length > 0) {
         setupScanner(cameraSelect.value);
       } else {
-        output.textContent = "No camera devices found.";
+        output.textContent = "No cameras detected.";
       }
     })();
   </script>
