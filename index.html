@@ -86,7 +86,8 @@
               if (currentStream)
                 currentStream.getTracks().forEach((track) => track.stop());
               lookupProduct(code);
-              rescanBtn.style.display = "block";
+              if(barcodes.length > 0)
+                rescanBtn.style.display = "block";
             } else {
               requestAnimationFrame(doScan);
             }
