@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>ZXing UPC Scanner</title>
+  <title>ZXing Camera Selector</title>
   <style>
     #video {
       width: 100%;
@@ -14,43 +14,56 @@
       text-align: center;
       font-size: 1.2em;
     }
+    #cameraSelect {
+      display: block;
+      margin: 10px auto;
+      font-size: 1em;
+    }
   </style>
 </head>
 <body>
-  <h1 style="text-align:center;">ZXing UPC Scanner (No Modules/Filtered)</h1>
-  <video id="video" autoplay></video>
-  <div id="output">Initializing scanner...</div>
+  <h1 style="text-align:center;">ZXing UPC Scanner with Camera Selection</h1>
 
-  <!-- Load ZXing UMD build -->
+  <select id="cameraSelect"></select>
+  <video id="video" autoplay></video>
+  <div id="output">Select a camera to begin...</div>
+
+  <!-- ZXing UMD build -->
   <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
   <script>
     const codeReader = new ZXing.BrowserMultiFormatReader();
-    const output = document.getElementById('output');
     const videoElement = document.getElementById('video');
+    const cameraSelect = document.getElementById('cameraSelect');
+    const output = document.getElementById('output');
 
-    codeReader
-      .listVideoInputDevices()
-      .then(videoInputDevices => {
-        if (videoInputDevices.length === 0) {
-          output.textContent = "No camera found.";
-          return;
-        }
-        const backFacing = videoInputDevices.filter(vid => vid.facing === 'back');
-        alert(JSON.stringify(backFacing));
-        const deviceId = videoInputDevices[0].deviceId;
-        codeReader.decodeOnceFromVideoDevice(deviceId, videoElement)
-          .then(result => {
-            output.textContent = `Scanned Code: ${result.text}`;
-          })
-          .catch(err => {
-            console.error(err);
-            output.textContent = `Error: ${err.message}`;
-          });
-      })
-      .catch(err => {
-        console.error(err);
-        output.textContent = `Camera Error: ${err.message}`;
+    codeReader.listVideoInputDevices().then(devices => {
+      devices.forEach((device, index) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.text = device.label || `Camera ${index + 1}`;
+        cameraSelect.appendChild(option);
       });
+
+      if (devices.length > 0) {
+        startScanning(devices[0].deviceId);
+      }
+    });
+
+    cameraSelect.addEventListener('change', () => {
+      codeReader.reset();
+      startScanning(cameraSelect.value);
+    });
+
+    function startScanning(deviceId) {
+      output.textContent = 'Scanning...';
+      codeReader.decodeOnceFromVideoDevice(deviceId, videoElement)
+        .then(result => {
+          output.textContent = `Scanned Code: ${result.text}`;
+        })
+        .catch(err => {
+          output.textContent = `Error: ${err.message}`;
+        });
+    }
   </script>
 </body>
 </html>
