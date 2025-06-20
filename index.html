@@ -83,11 +83,7 @@
 
     async function lookupProduct(upc) {
       try {
-        const url = `https://api.upcitemdb.com/prod/trial/lookup?upc=${upc}`;
-        alert(url);
-        const res = await fetch(url, {
-          headers: { 'Content-Type': 'application/json' }
-        });
+        fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`)
         const data = await res.json();
         if (data.items && data.items.length > 0) {
           const item = data.items[0];
