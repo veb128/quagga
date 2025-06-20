@@ -1,33 +1,104 @@
-<video id="video" autoplay></video>
-<div id="output">Waiting for scan...</div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Barcode Detector with Camera Selector</title>
+  <style>
+    #video {
+      width: 100%;
+      max-width: 600px;
+      border: 2px solid #333;
+    }
+    #cameraSelect {
+      display: block;
+      margin: 10px auto;
+      font-size: 1em;
+    }
+    #output {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align: center;">Barcode Detector with Camera Selection</h1>
 
-<script>
-  if ('BarcodeDetector' in window) {
-    const formats = ['upc_a', 'upc_e'];
-    const detector = new BarcodeDetector({ formats });
+  <select id="cameraSelect"></select>
+  <video id="video" autoplay></video>
+  <div id="output">Initializing...</div>
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      .then(stream => {
-        const video = document.getElementById('video');
-        video.srcObject = stream;
+  <script>
+    const video = document.getElementById('video');
+    const cameraSelect = document.getElementById('cameraSelect');
+    const output = document.getElementById('output');
 
-        const scan = () => {
-          detector.detect(video).then(barcodes => {
-            if (barcodes.length > 0) {
-              document.getElementById('output').textContent = `Scanned: ${barcodes[0].rawValue}`;
-              stream.getTracks().forEach(track => track.stop());
-            } else {
-              requestAnimationFrame(scan);
-            }
-          });
-        };
-
-        requestAnimationFrame(scan);
-      })
-      .catch(err => {
-        document.getElementById('output').textContent = `Camera error: ${err.message}`;
+    async function getCameras() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(d => d.kind === 'videoinput');
+      videoDevices.forEach((device, i) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.text = device.label || `Camera ${i + 1}`;
+        cameraSelect.appendChild(option);
       });
-  } else {
-    document.getElementById('output').textContent = 'BarcodeDetector not supported in this browser.';
-  }
-</script>
+    }
+
+    async function startStream(deviceId) {
+      const constraints = {
+        video: { deviceId: { exact: deviceId } }
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      return stream;
+    }
+
+    function stopStream() {
+      const stream = video.srcObject;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    }
+
+    async function scanLoop(detector) {
+      try {
+        const barcodes = await detector.detect(video);
+        if (barcodes.length > 0) {
+          output.textContent = `Scanned: ${barcodes[0].rawValue}`;
+          stopStream();
+        } else {
+          requestAnimationFrame(() => scanLoop(detector));
+        }
+      } catch (err) {
+        output.textContent = `Scan error: ${err.message}`;
+      }
+    }
+
+    async function setupScanner(deviceId) {
+      stopStream();
+      output.textContent = "Scanning...";
+      const stream = await startStream(deviceId);
+      const detector = new BarcodeDetector({ formats: ['upc_a', 'upc_e'] });
+      requestAnimationFrame(() => scanLoop(detector));
+    }
+
+    cameraSelect.addEventListener('change', () => {
+      setupScanner(cameraSelect.value);
+    });
+
+    // Initialize
+    (async () => {
+      if (!('BarcodeDetector' in window)) {
+        output.textContent = "Barcode Detection API not supported in this browser.";
+        return;
+      }
+      await getCameras();
+      if (cameraSelect.options.length > 0) {
+        await setupScanner(cameraSelect.value);
+      } else {
+        output.textContent = "No camera devices found.";
+      }
+    })();
+  </script>
+</body>
+</html>
