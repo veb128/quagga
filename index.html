@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>UPC Scanner</title>
+   <script src="https://unpkg.com/quagga/dist/quagga.min.js"></script>
+  <style>
+    #scanner-container {
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+      border: 2px solid #333;
+    }
+    #output {
+      margin-top: 20px;
+      font-size: 1.2em;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;">UPC Code Scanner</h1>
+  <div id="scanner-container"></div>
+  <div id="output">Awaiting scan...</div>
+
+  <script>
+    Quagga.init({
+      inputStream: {
+        type : "LiveStream",
+        target: document.querySelector('#scanner-container'),
+        constraints: {
+          width: 480,
+          height: 320,
+          facingMode: "user" // use back camera
+        },
+      },
+      decoder: {
+        readers : ["upc_reader", "upc_e_reader"]
+      },
+    }, function(err) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        Quagga.start();
+    });
+
+    Quagga.onDetected(function(data) {
+      const code = data.codeResult.code;
+      document.getElementById('output').textContent = `UPC Code: ${code}`;
+      Quagga.stop(); // stop scanning after first detection
+    });
+  </script>
+</body>
+</html>
