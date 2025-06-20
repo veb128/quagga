@@ -2,13 +2,40 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>UPC Scanner</title>
-   <script src="https://unpkg.com/quagga/dist/quagga.min.js"></script>
+  <title>ZXing UPC Scanner</title>
+  <script type="module">
+    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/index.min.js';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const codeReader = new BrowserMultiFormatReader();
+      const videoElement = document.getElementById('video');
+      const output = document.getElementById('output');
+
+      codeReader
+        .listVideoInputDevices()
+        .then(videoInputDevices => {
+          const selectedDeviceId = videoInputDevices[0]?.deviceId;
+          if (!selectedDeviceId) {
+            output.textContent = 'No camera found.';
+            return;
+          }
+
+          codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err) => {
+            if (result) {
+              output.textContent = `Scanned Code: ${result.getText()}`;
+              codeReader.reset(); // stop scanning after first result
+            }
+          });
+        })
+        .catch(err => {
+          output.textContent = `Error: ${err}`;
+        });
+    });
+  </script>
   <style>
-    #scanner-container {
+    #video {
       width: 100%;
       max-width: 600px;
-      margin: auto;
       border: 2px solid #333;
     }
     #output {
@@ -19,37 +46,8 @@
   </style>
 </head>
 <body>
-  <h1 style="text-align:center;">UPC Code Scanner</h1>
-  <div id="scanner-container"></div>
-  <div id="output">Awaiting scan...</div>
-
-  <script>
-    Quagga.init({
-      inputStream: {
-        type : "LiveStream",
-        target: document.querySelector('#scanner-container'),
-        constraints: {
-          width: 480,
-          height: 320,
-          facingMode: "environment" // use back camera
-        },
-      },
-      decoder: {
-        readers : ["upc_reader", "upc_e_reader"]
-      },
-    }, function(err) {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        Quagga.start();
-    });
-
-    Quagga.onDetected(function(data) {
-      const code = data.codeResult.code;
-      document.getElementById('output').textContent = `UPC Code: ${code}`;
-      Quagga.stop(); // stop scanning after first detection
-    });
-  </script>
+  <h1 style="text-align:center;">ZXing UPC Scanner</h1>
+  <video id="video" autoplay></video>
+  <div id="output">Initializing scanner...</div>
 </body>
 </html>
