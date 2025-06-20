@@ -24,7 +24,7 @@
         margin-top: 10px;
       }
     </style>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   </head>
   <body>
     <h1 style="text-align: center">Food Scanner with Camera Selection</h1>
@@ -86,6 +86,7 @@
               if (currentStream)
                 currentStream.getTracks().forEach((track) => track.stop());
               lookupProduct(code);
+              rescanBtn.style.display = "block";
             } else {
               requestAnimationFrame(doScan);
             }
@@ -132,11 +133,31 @@
       async function setupScanner(deviceId) {
         output.textContent = "Starting camera...";
         productInfo.innerHTML = "";
+        rescanBtn.style.display = "none";
+
+        // Stop any existing stream
+        if (currentStream) {
+          currentStream.getTracks().forEach((track) => track.stop());
+          currentStream = null;
+        }
+
+        // Start new stream
+        const constraints = { video: { deviceId: { exact: deviceId } } };
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = currentStream;
+
+        await new Promise((resolve) => {
+          video.addEventListener("loadeddata", () => resolve(), { once: true });
+        });
+
+        output.textContent = "Scanning...";
+
+        // Create a fresh detector each time
         const detector = new BarcodeDetector({
           formats: ["upc_a", "upc_e", "ean_13"],
         });
-        await startStream(deviceId);
-        output.textContent = "Scanning...";
+
+        // Start scanning loop
         scanLoop(detector);
       }
 
