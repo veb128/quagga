@@ -35,7 +35,7 @@
           output.textContent = "No camera found.";
           return;
         }
-
+        alert(JSON.stringify(videoInputDevices));
         const deviceId = videoInputDevices[0].deviceId;
         codeReader.decodeOnceFromVideoDevice(deviceId, videoElement)
           .then(result => {
