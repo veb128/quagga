@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-  <h1 style="text-align:center;">ZXing UPC Scanner with Camera Selection</h1>
+  <h1 style="text-align:center;">ZXing UPC Scanner with Selection</h1>
 
   <select id="cameraSelect"></select>
   <video id="video" autoplay></video>
@@ -56,7 +56,7 @@
 
     function startScanning(deviceId) {
       output.textContent = 'Scanning...';
-      codeReader.decodeOnceFromVideoDevice(deviceId, videoElement)
+      codeReader.decodeFromVideoDevice(deviceId, videoElement)
         .then(result => {
           output.textContent = `Scanned Code: ${result.text}`;
         })
