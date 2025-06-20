@@ -32,12 +32,14 @@
   <video id="video" autoplay playsinline></video>
   <div id="output">Initializing...</div>
   <div id="productInfo"></div>
+  <button id="rescan" onclick="scanLoop(detector)">Scan Again</button>
 
   <script>
     const video = document.getElementById('video');
     const cameraSelect = document.getElementById('cameraSelect');
     const output = document.getElementById('output');
     const productInfo = document.getElementById('productInfo');
+    
     let currentStream = null;
 
     async function getCameras() {
