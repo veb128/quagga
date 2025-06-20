@@ -3,35 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>ZXing UPC Scanner</title>
-  <script type="module">
-    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/esm/index.min.js';
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const codeReader = new BrowserMultiFormatReader();
-      const videoElement = document.getElementById('video');
-      const output = document.getElementById('output');
-
-      codeReader
-        .listVideoInputDevices()
-        .then(videoInputDevices => {
-          const selectedDeviceId = videoInputDevices[0]?.deviceId;
-          if (!selectedDeviceId) {
-            output.textContent = 'No camera found.';
-            return;
-          }
-
-          codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err) => {
-            if (result) {
-              output.textContent = `Scanned Code: ${result.getText()}`;
-              codeReader.reset(); // stop scanning after first result
-            }
-          });
-        })
-        .catch(err => {
-          output.textContent = `Error: ${err}`;
-        });
-    });
-  </script>
   <style>
     #video {
       width: 100%;
@@ -40,14 +11,45 @@
     }
     #output {
       margin-top: 20px;
-      font-size: 1.2em;
       text-align: center;
+      font-size: 1.2em;
     }
   </style>
 </head>
 <body>
-  <h1 style="text-align:center;">ZXing UPC Scanner</h1>
+  <h1 style="text-align:center;">ZXing UPC Scanner (No Modules)</h1>
   <video id="video" autoplay></video>
   <div id="output">Initializing scanner...</div>
+
+  <!-- Load ZXing UMD build -->
+  <script src="https://unpkg.com/@zxing/library@0.18.6/umd/index.min.js"></script>
+  <script>
+    const codeReader = new ZXing.BrowserMultiFormatReader();
+    const output = document.getElementById('output');
+    const videoElement = document.getElementById('video');
+
+    codeReader
+      .listVideoInputDevices()
+      .then(videoInputDevices => {
+        if (videoInputDevices.length === 0) {
+          output.textContent = "No camera found.";
+          return;
+        }
+
+        const deviceId = videoInputDevices[0].deviceId;
+        codeReader.decodeOnceFromVideoDevice(deviceId, videoElement)
+          .then(result => {
+            output.textContent = `Scanned Code: ${result.text}`;
+          })
+          .catch(err => {
+            console.error(err);
+            output.textContent = `Error: ${err.message}`;
+          });
+      })
+      .catch(err => {
+        console.error(err);
+        output.textContent = `Camera Error: ${err.message}`;
+      });
+  </script>
 </body>
 </html>
