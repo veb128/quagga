@@ -55,15 +55,17 @@
     });
 
     function startScanning(deviceId) {
-      output.textContent = 'Scanning...';
-      codeReader.decodeFromVideoDevice(deviceId, videoElement)
-        .then(result => {
-          output.textContent = `Scanned Code: ${result.text}`;
-        })
-        .catch(err => {
-          output.textContent = `Error: ${err.message}`;
-        });
+  output.textContent = 'Scanning...';
+  codeReader.decodeFromVideoDevice(deviceId, videoElement, (result, err) => {
+    if (result) {
+      output.textContent = `Scanned Code: ${result.text}`;
+      codeReader.reset(); // stop scanning after successful read
+    } else if (err && !(err instanceof ZXing.NotFoundException)) {
+      console.error(err);
+      output.textContent = `Error: ${err.message || err}`;
     }
+  });
+}
   </script>
 </body>
 </html>
